@@ -101,10 +101,9 @@ int main(int argc, char *argv[]) {
                 }
                 received_numbers++;
             }
-
             if (start_sending_numbers) {
                 if (my_id != number_of_processors - 1) {
-                    if ((queue_1.front() < queue_2.front() && !queue_2.empty()) || queue_1.empty() || q1_num == 0) {
+                    if ((queue_1.front() <= queue_2.front() && !queue_2.empty()) || queue_1.empty() || q1_num == 0) {
                         uint8_t number = queue_2.front();
                         queue_2.pop();
                         MPI_Send(&number, 1, MPI_INT8_T, my_id + 1, tag, MPI_COMM_WORLD);
@@ -127,7 +126,7 @@ int main(int argc, char *argv[]) {
                         k = k + output_size;
                     }
                 } else {
-                    if ((queue_1.front() < queue_2.front() && !queue_2.empty()) || queue_1.empty()) {
+                    if ((queue_1.front() <= queue_2.front() && !queue_2.empty()) || queue_1.empty()) {
                         uint8_t number = queue_2.front();
                         queue_2.pop();
                         output.push(number);
