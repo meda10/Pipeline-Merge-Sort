@@ -1,2 +1,9 @@
 # Project exclude paths
 /cmake-build-debug/
+/pms-master/
+/PRL-master/
+/xx/
+hello.c
+hello.sh
+odd-even.cpp
+odd.sh
