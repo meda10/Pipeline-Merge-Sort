@@ -8,7 +8,7 @@
 
 #define QUEUE_1_TAG 0
 #define QUEUE_2_TAG 1
-#define TIME
+//#define TIME
 
 /**
  * Function measures time difference
