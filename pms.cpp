@@ -8,6 +8,25 @@
 
 #define QUEUE_1_TAG 0
 #define QUEUE_2_TAG 1
+#define TIME
+
+/**
+ * Function measures time difference
+ * Function is taken from: https://www.guyrutenberg.com/2007/09/22/profiling-code-using-clock_gettime/
+ * @return time difference
+ */
+timespec diff(timespec start, timespec end){
+    timespec temp{};
+    if ((end.tv_nsec-start.tv_nsec)<0) {
+        temp.tv_sec = end.tv_sec-start.tv_sec-1;
+        temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+    } else {
+        temp.tv_sec = end.tv_sec-start.tv_sec;
+        temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+    }
+    return temp;
+}
+
 
 /**
  * Reads file called numbers
@@ -35,6 +54,7 @@ std::queue<uint8_t> read_numbers_file(){
 
 
 int main(int argc, char *argv[]) {
+    timespec time1{}, time2{};
     int number_of_processors;
     int my_id;
 
@@ -50,16 +70,20 @@ int main(int argc, char *argv[]) {
         std::queue<uint8_t> numbers = read_numbers_file();
         std::queue<uint8_t> print_numbers = numbers;
 
+        if(input_size_all != numbers.size()){
+            MPI_Abort(MPI_COMM_WORLD, 5);
+        }
+
+#ifndef TIME
         //Print numbers
         while (!print_numbers.empty()) {
             std::cout << unsigned(print_numbers.front()) << ' ';
             print_numbers.pop();
         }
         std::cout << std::endl;
-
-        if(input_size_all != numbers.size()){
-            MPI_Abort(MPI_COMM_WORLD, 5);
-        }
+#else
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+#endif
 
         //Send numbers to next processor -> resulting queue is based on tag
         int i = 0;
@@ -152,6 +176,11 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
+#ifdef TIME
+        //Send message to process 0 that numbers are sorted and time measurement can stop
+        uint8_t number = 0;
+        MPI_Send(&number, 1, MPI_INT8_T, 0, 0, MPI_COMM_WORLD);
+#else
         //Print sorted numbers
         if (my_id == number_of_processors - 1) {
             while (!output.empty()) {
@@ -159,7 +188,20 @@ int main(int argc, char *argv[]) {
                 output.pop();
             }
         }
+#endif
     }
+
+#ifdef TIME
+    //End time measurement and print results
+    if (my_id == 0) {
+        uint8_t number;
+        MPI_Recv(&number, 1, MPI_INT8_T, number_of_processors - 1, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+        timespec time = diff(time1, time2);
+        std::cout << time.tv_sec << ":" << time.tv_nsec << std::endl;
+    }
+#endif
+
     MPI_Finalize();
     return 0;
 }
