@@ -10,8 +10,8 @@
 #define QUEUE_2_TAG 1
 
 /**
- *
- * @return
+ * Reads file called numbers
+ * @return  queue that consists of read numbers
  */
 std::queue<uint8_t> read_numbers_file(){
     std::queue<uint8_t> numbers;
@@ -26,8 +26,7 @@ std::queue<uint8_t> read_numbers_file(){
             numbers.push(num);
         }
         file.close();
-    }
-    else {
+    } else {
         std::cerr << "Can not open file numbers";
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
@@ -44,14 +43,14 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD,&number_of_processors);
     MPI_Comm_rank(MPI_COMM_WORLD,&my_id);
 
-//    int r =  number_of_processors - 1;
     double input_size_all = pow(2, number_of_processors - 1);
 
-    //first processor
+    //First processor -> reads file numbers and sends the values to next processors queue_1 and queue_2
     if(my_id == 0) {
         std::queue<uint8_t> numbers = read_numbers_file();
         std::queue<uint8_t> print_numbers = numbers;
 
+        //Print numbers
         while (!print_numbers.empty()) {
             std::cout << unsigned(print_numbers.front()) << ' ';
             print_numbers.pop();
@@ -62,6 +61,7 @@ int main(int argc, char *argv[]) {
             MPI_Abort(MPI_COMM_WORLD, 5);
         }
 
+        //Send numbers to next processor -> resulting queue is based on tag
         int i = 0;
         int tag = 0;
         while (!numbers.empty()) {
@@ -88,6 +88,7 @@ int main(int argc, char *argv[]) {
         double q2_num = input_size;
 
         while (k <= input_size_all) {
+            //Receive numbers from predecessor, put them to queue_1 or queue_2 based on tag
             if (received_numbers < input_size_all) {
                 uint8_t number;
                 MPI_Recv(&number, 1, MPI_INT8_T, my_id - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
@@ -96,12 +97,15 @@ int main(int argc, char *argv[]) {
                 } else if (status.MPI_TAG == QUEUE_2_TAG) {
                     queue_2.push(number);
                 }
+                //processor have enough numbers -> it can start comparing and sending them to next processor
                 if (queue_1.size() == input_size && queue_2.size() == 1) {
                     start_sending_numbers = true;
                 }
                 received_numbers++;
             }
             if (start_sending_numbers) {
+                // Middle processors -> compare first elements from queue_1 and queue_2, remove larger one
+                // and send it to next processors queue (number of queue is based on variable tag)
                 if (my_id != number_of_processors - 1) {
                     if ((queue_1.front() <= queue_2.front() && !queue_2.empty()) || queue_1.empty() || q1_num == 0) {
                         uint8_t number = queue_2.front();
@@ -125,6 +129,8 @@ int main(int argc, char *argv[]) {
                         tag = (tag + 1) % 2;
                         k = k + output_size;
                     }
+                //Last processor -> compare first elements from queue_1 and queue_2, remove larger one
+                // and saves it to variable output
                 } else {
                     if ((queue_1.front() <= queue_2.front() && !queue_2.empty()) || queue_1.empty()) {
                         uint8_t number = queue_2.front();
@@ -146,6 +152,7 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
+        //Print sorted numbers
         if (my_id == number_of_processors - 1) {
             while (!output.empty()) {
                 std::cout << unsigned(output.top()) << '\n';
