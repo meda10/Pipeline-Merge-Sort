@@ -1,4 +1,3 @@
 ## Pipeline Merge Sort
 
-Implementation of Pipeline Merge Sort algorithm in C++
-
+Implementation of parallel Pipeline Merge Sort algorithm using Open MPI (Message Passing Interface) in C++.
